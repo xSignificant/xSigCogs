@@ -1,10 +1,9 @@
 import datetime
 import random
-from typing import Optional
 
 import discord
 from redbot.core import Config, bank, checks, commands
-from redbot.core.utils.chat_formatting import humanize_timedelta, box
+from redbot.core.utils.chat_formatting import humanize_timedelta
 from redbot.core.utils.menus import DEFAULT_CONTROLS, menu
 
 from .defaultreplies import work, crimes
@@ -39,11 +38,7 @@ def check_global_setting_admin():
 
 
 class Unbelievaboat(commands.Cog):
-<<<<<<< HEAD
-    __version__ = "0.1.2"
-=======
-    __version__ = "0.1.0"
->>>>>>> parent of 76ae30c... [unbelievaboat] 0.1.1
+    __version__ = "0.1.1"
 
     def __init__(self, bot):
         self.bot = bot
@@ -56,10 +51,7 @@ class Unbelievaboat(commands.Cog):
             "failrates": {"crime": 50, "rob": 70},
             "fines": {"max": 250, "min": 10},
         }
-        defaults_member = {
-            "cooldowns": {"workcd": None, "crimecd": None, "robcd": None},
-            "wallet": 0,
-        }
+        defaults_member = {"cooldowns": {"workcd": None, "crimecd": None, "robcd": None}}
         self.config = Config.get_conf(self, identifier=95932766180343808, force_registration=True)
         self.config.register_global(**defaults)
         self.config.register_guild(**defaults)
@@ -77,76 +69,31 @@ class Unbelievaboat(commands.Cog):
         if roll == 1:
             return 0.005
         if roll > 1 and roll <= 6:
-            return 0.03
+            return 0.01
         if roll > 6 and roll <= 8:
-            return 0.10
+            return 0.02
         if roll > 8 and roll <= 10:
-            return 0.20
+            return 0.03
         if roll > 10 and roll <= 13:
-            return 0.25
+            return 0.04
         if roll > 13 and roll <= 16:
-            return 0.4
+            return 0.06
         if roll > 16 and roll <= 17:
-            return 0.655
+            return 0.075
         if roll > 17 and roll <= 19:
-            return 0.8
+            return 0.085
         if roll == 20:
-            return 0.85
+            return 0.1
 
-    async def walletdeposit(self, user, amount):
-        conf = await self.configglobalcheckuser(user)
-        wallet = await conf.wallet()
-        await conf.wallet.set(wallet + amount)
-
-    async def walletremove(self, user, amount):
-        conf = await self.configglobalcheckuser(user)
-        wallet = await conf.wallet()
-        if amount < wallet:
-            await conf.wallet.set(wallet - amount)
-        else:
-            await conf.wallet.set(0)
-
-    async def walletset(self, user, amount):
-        conf = await self.configglobalcheckuser(user)
-        await conf.wallet.set(amount)
-
-    async def bankdeposit(self, ctx, user, amount):
-        conf = await self.configglobalcheckuser(user)
-        wallet = await conf.wallet()
-        if amount > wallet:
-            return await ctx.send("You have insufficent funds to complete this deposit.")
-        else:
-            await bank.deposit_credits(user, amount)
-            await self.walletset(user, wallet - amount)
-            return await ctx.send(
-                f"You have succesfully deposited {amount} {await bank.get_currency_name(ctx.guild)} into your bank account."
-            )
-
-    async def walletbalance(self, user):
-        conf = await self.configglobalcheckuser(user)
-        return await conf.wallet()
-
-    async def bankwithdraw(self, ctx, user, amount):
-        conf = await self.configglobalcheckuser(user)
-        wallet = await conf.wallet()
-        try:
-            await bank.withdraw_credits(user, amount)
-            await self.walletset(user, wallet + amount)
-            return await ctx.send(
-                f"You have succesfully withdrawn {amount} {await bank.get_currency_name(ctx.guild)} from your bank account."
-            )
-        except ValueError:
-            return await ctx.send("You have insufficent funds to complete this withdrawl.")
-
-    async def configglobalcheckuser(self, user):
+    async def configglobalcheckuser(self, ctx):
         if await bank.is_global():
-            return self.config.user(user)
+            return self.config.user(ctx.author)
         else:
-            return self.config.member(user)
+            return self.config.member(ctx.author)
 
     async def cdcheck(self, ctx, job):
         conf = await self.configglobalcheck(ctx)
-        userconf = await self.configglobalcheckuser(ctx.author)
+        userconf = await self.configglobalcheckuser(ctx)
         cd = await userconf.cooldowns()
         jobcd = await conf.cooldowns()
         if cd[job] is None:
@@ -165,27 +112,20 @@ class Unbelievaboat(commands.Cog):
         fines = await conf.fines()
         randint = random.randint(fines["min"], fines["max"])
         amount = str(randint) + " " + await bank.get_currency_name(ctx.guild)
-        userconf = await self.configglobalcheckuser(ctx.author)
-        if randint < await userconf.wallet():
-            await self.walletremove(ctx.author, randint)
+        try:
+            await bank.withdraw_credits(ctx.author, randint)
             embed = discord.Embed(
                 colour=discord.Color.red(),
-                description=f"\N{NEGATIVE SQUARED CROSS MARK} You were caught by the police and fined {amount}.",
+                description=f"\N{NEGATIVE SQUARED CROSS MARK} You were caught by the police and fined {amount}",
             )
-        else:
-            if await bank.can_spend(ctx.author, int(randint * 1.05)):
-                await bank.withdraw_credits(ctx.author, int(randint * 1.05))
-                embed = discord.Embed(
-                    colour=discord.Color.red(),
-                    description=f"\N{NEGATIVE SQUARED CROSS MARK} You were caught by the police and fined {amount}. You did not have enough cash in your wallet and thus it was taken from your bank with a 5% interest fee ({int(randint * 1.05)} {await bank.get_currency_name(ctx.guild)}).",
-                )
-            else:
-                await bank.set_balance(ctx.author, 0)
-                embed = discord.Embed(
-                    colour=discord.Color.red(),
-                    description=f"\N{NEGATIVE SQUARED CROSS MARK} You were caught by the police and fined {amount}. You did not have enough cash to pay the fine and are now bankrupt.",
-                )
-        embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
+            embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
+        except ValueError:
+            await bank.set_balance(ctx.author, 0)
+            embed = discord.Embed(
+                colour=discord.Color.red(),
+                description=f"\N{NEGATIVE SQUARED CROSS MARK} You were caught by the police and fined {amount}. You did not have enough cash to pay the fine and are now bankrupt.",
+            )
+            embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
         await ctx.send(embed=embed)
 
     @checks.admin()
@@ -266,47 +206,25 @@ class Unbelievaboat(commands.Cog):
     @checks.admin()
     @check_global_setting_admin()
     @commands.command(aliases=["addcashrole"])
-    async def addmoneyrole(
-        self, ctx, amount: int, role: discord.Role, destination: Optional[str] = "wallet"
-    ):
-        """Add money to the balance of all users within a role.
-        Valid arguements are 'banks' or 'wallet'."""
-        if destination.lower() not in ["bank", "wallet"]:
-            return await ctx.send(
-                "You've supplied an invalid destination, you can choose to add it to a bank or their wallet.\nIf no destination is supplied it will default to their wallet."
-            )
-        if destination.lower() == "bank":
-            for user in role.members:
-                try:
-                    await bank.deposit_credits(user, amount)
-                except (ValueError, TypeError):
-                    pass
-        else:
-            for user in role.members:
-                await self.walletdeposit(user, amount)
+    async def addmoneyrole(self, ctx, amount: int, role: discord.Role):
+        """Add money to the balance of all users within a role."""
+        for user in role.members:
+            try:
+                await bank.deposit_credits(user, amount)
+            except (ValueError, TypeError):
+                pass
         await ctx.tick()
 
     @checks.admin()
     @check_global_setting_admin()
     @commands.command(aliases=["removecashrole"])
-    async def removemoneyrole(
-        self, ctx, amount: int, role: discord.Role, destination: Optional[str] = "wallet"
-    ):
-        """Remove money from the bank balance of all users within a role.
-        Valid arguements are 'banks' or 'wallet'."""
-        if destination.lower() not in ["bank", "wallet"]:
-            return await ctx.send(
-                "You've supplied an invalid destination, you can choose to add it to a bank or their wallet.\nIf no destination is supplied it will default to their wallet."
-            )
-        if destination.lower() == "bank":
-            for user in role.members:
-                try:
-                    await bank.deposit_credits(user, amount)
-                except ValueError:
-                    await bank.set_balance(user, 0)
-        else:
-            for user in role.members:
-                await self.walletremove(user, amount)
+    async def removemoneyrole(self, ctx, amount: int, role: discord.Role):
+        """Remove money from the balance of all users within a role."""
+        for user in role.members:
+            try:
+                await bank.withdraw_credits(user, amount)
+            except ValueError:
+                await bank.set_balance(user, 0)
         await ctx.tick()
 
     @commands.command()
@@ -334,11 +252,11 @@ class Unbelievaboat(commands.Cog):
             linenum = replies["workreplies"].index(job)
             line = job.format(amount=wagesentence)
         embed = discord.Embed(
-            colour=discord.Color.green(), description=line, timestamp=ctx.message.created_at
+            colour=discord.Color.green(), description=line, timestamp=datetime.datetime.now()
         )
         embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
         embed.set_footer(text="Reply #{}".format(linenum))
-        await self.walletdeposit(ctx.author, wage)
+        await bank.deposit_credits(ctx.author, wage)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -370,11 +288,11 @@ class Unbelievaboat(commands.Cog):
             line = job.format(amount=wagesentence)
             linenum = replies["crimereplies"].index(job)
         embed = discord.Embed(
-            colour=discord.Color.green(), description=line, timestamp=ctx.message.created_at
+            colour=discord.Color.green(), description=line, timestamp=datetime.datetime.now()
         )
         embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
         embed.set_footer(text="Reply #{}".format(linenum))
-        await self.walletdeposit(ctx.author, wage)
+        await bank.deposit_credits(ctx.author, wage)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -391,29 +309,25 @@ class Unbelievaboat(commands.Cog):
         fail = random.randint(1, 100)
         if fail < failrates["rob"]:
             return await self.fine(ctx, "rob")
-        userbalance = await self.walletbalance(user)
+        userbalance = await bank.get_balance(user)
         if userbalance <= 50:
-            finechance = random.randint(1, 10)
-            if finechance > 5:
-                embed = discord.Embed(
-                    colour=discord.Color.red(),
-                    description="You steal {}'s wallet but there was nothing of value inside.".format(
-                        user.name
-                    ),
-                    timestamp=ctx.message.created_at,
-                )
-                embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-                return await ctx.send(embed=embed)
-            else:
-                return await self.fine(ctx, "rob")
+            embed = discord.Embed(
+                colour=discord.Color.red(),
+                description="You steal {}'s wallet but there was nothing of value inside.".format(
+                    user.name
+                ),
+                timestamp=datetime.datetime.now(),
+            )
+            embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
+            return await ctx.send(embed=embed)
         modifier = self.roll()
         stolen = random.randint(1, int(userbalance * modifier))
-        await self.walletremove(user, stolen)
-        await self.walletdeposit(ctx.author, stolen)
+        await bank.withdraw_credits(user, stolen)
+        await bank.deposit_credits(ctx.author, stolen)
         embed = discord.Embed(
             colour=discord.Color.green(),
             description="You steal {}'s wallet and find {} inside.".format(user.name, stolen),
-            timestamp=ctx.message.created_at,
+            timestamp=datetime.datetime.now(),
         )
         embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
         await ctx.send(embed=embed)
@@ -493,10 +407,9 @@ class Unbelievaboat(commands.Cog):
 
     @commands.command()
     async def cooldowns(self, ctx):
-        """List all the current cooldowns."""
+        """List your remaining cooldowns.."""
         conf = await self.configglobalcheck(ctx)
-<<<<<<< HEAD
-        userconf = await self.configglobalcheckuser(ctx.author)
+        userconf = await self.configglobalcheckuser(ctx)
         cd = await userconf.cooldowns()
         jobcd = await conf.cooldowns()
         if cd["workcd"] is None:
@@ -523,12 +436,6 @@ class Unbelievaboat(commands.Cog):
                 robcd = humanize_timedelta(seconds=jobcd["robcd"] - time)
             else:
                 robcd = "Ready to use."
-=======
-        cooldowns = await conf.cooldowns()
-        workcd = humanize_timedelta(seconds=cooldowns["workcd"])
-        robcd = humanize_timedelta(seconds=cooldowns["robcd"])
-        crimecd = humanize_timedelta(seconds=cooldowns["crimecd"])
->>>>>>> parent of 76ae30c... [unbelievaboat] 0.1.1
         msg = "Work Cooldown: `{}`\nCrime Cooldown: `{}`\nRob Cooldown: `{}`".format(
             workcd, crimecd, robcd
         )
@@ -570,96 +477,3 @@ class Unbelievaboat(commands.Cog):
         )
         embed.add_field(name="Cooldown Settings", value=cooldowns, inline=True)
         await ctx.send(embed=embed)
-
-    @commands.group()
-    async def wallet(self, ctx):
-        """Wallet commands."""
-        pass
-
-    @wallet.command()
-    async def balance(self, ctx, user=None):
-        """Show the user's wallet balance.
-        Defaults to yours."""
-        if user is None:
-            user = ctx.author
-        balance = await self.walletbalance(user)
-        currency = await bank.get_currency_name(ctx.guild)
-        await ctx.send(f"{user.display_name}'s wallet balance is {balance} {currency}")
-
-    @wallet.command()
-    async def leaderboard(self, ctx, top: int = 10):
-        """Print the wallet leaderboard."""
-        if top < 1:
-            top = 10
-        guild = ctx.guild
-        if await bank.is_global():
-            raw_accounts = await self.config.all_users()
-            if guild is not None:
-                tmp = raw_accounts.copy()
-                for acc in tmp:
-                    if not guild.get_member(acc):
-                        del raw_accounts[acc]
-        else:
-            raw_accounts = await self.config.all_members(guild)
-        walletlist = sorted(raw_accounts.items(), key=lambda x: x[1]["wallet"], reverse=True)[:top]
-        try:
-            bal_len = len(str(walletlist[0][1]["wallet"]))
-
-        except IndexError:
-            return await ctx.send("There are no users with a wallet balance.")
-        pound_len = len(str(len(walletlist)))
-        header = "{pound:{pound_len}}{score:{bal_len}}{name:2}\n".format(
-            pound="#", name="Name", score="Score", bal_len=bal_len + 6, pound_len=pound_len + 3
-        )
-        highscores = []
-        pos = 1
-        temp_msg = header
-        for acc in walletlist:
-            try:
-                name = guild.get_member(acc[0]).display_name
-            except AttributeError:
-                user_id = ""
-                if await ctx.bot.is_owner(ctx.author):
-                    user_id = f"({str(acc[0])})"
-                name = f"{user_id}"
-            balance = acc[1]["wallet"]
-
-            if acc[0] != ctx.author.id:
-                temp_msg += f"{f'{pos}.': <{pound_len+2}} {balance: <{bal_len + 5}} {name}\n"
-
-            else:
-                temp_msg += (
-                    f"{f'{pos}.': <{pound_len+2}} "
-                    f"{balance: <{bal_len + 5}} "
-                    f"<<{ctx.author.display_name}>>\n"
-                )
-            if pos % 10 == 0:
-                highscores.append(box(temp_msg, lang="md"))
-                temp_msg = header
-            pos += 1
-
-        if temp_msg != header:
-            highscores.append(box(temp_msg, lang="md"))
-
-        if highscores:
-            await menu(ctx, highscores, DEFAULT_CONTROLS)
-
-    @checks.admin()
-    @check_global_setting_admin()
-    @wallet.command(name="set")
-    async def _walletset(self, ctx, user: discord.Member, amount: int):
-        """Set a users wallet balance."""
-        await self.walletset(user, amount)
-        await ctx.send(
-            f"{ctx.author.display_name} has set {user.display_name}'s wallet balance to {amount} {await bank.get_currency_name(ctx.guild)}"
-        )
-
-    @commands.command()
-    async def deposit(self, ctx, amount: int):
-        """Deposit cash from your wallet to your bank."""
-        await self.bankdeposit(ctx, ctx.author, amount)
-
-    @commands.command()
-    async def withdraw(self, ctx, amount: int):
-        """Withdraw cash from your bank to your wallet."""
-        await self.bankwithdraw(ctx, ctx.author, amount)
