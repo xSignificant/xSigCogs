@@ -28,7 +28,7 @@ _ = Translator("Warnings", __file__)
 
 
 @cog_i18n(_)
-class Warnings(commands.Cog):
+class ImproveWarnings(commands.Cog):
     """Warn misbehaving users and take automated actions."""
 
     default_guild = {
