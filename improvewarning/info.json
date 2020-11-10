@@ -1,0 +1,15 @@
+{
+    "author": [
+        "Not Sig"
+    ],
+    "description": "Modified Ver of Core Warnings Cog.",
+    "hidden": false,
+    "install_msg": "Thank you for installing improvewarning.  It is your responsibility to ensure this shit works.\n\nUse at your own risk.",
+    "short": "Improve Warning",
+    "tags": [
+        "warning",
+        "mod",
+        "statistics",
+    ],
+    "end_user_data_statement": "This cog stores no end user data."
+}
